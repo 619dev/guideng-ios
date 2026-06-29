@@ -22,6 +22,7 @@ pnpm-debug.log*
 Thumbs.db
 .idea/
 .vscode/
+build/
 *.iml
 
 # Signing keys and release artifacts
