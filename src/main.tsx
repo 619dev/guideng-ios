@@ -35,6 +35,11 @@ type Session = {
   deviceName: string;
 };
 
+type RuntimeInfo = {
+  isNative: boolean;
+  platform: string;
+};
+
 type LocationPayload = {
   latitude: number;
   longitude: number;
@@ -97,7 +102,11 @@ const i18n = {
     accuracy: '精度',
     updated: '更新',
     noLocation: '还没有位置',
-    permissionHint: '浏览器需要位置权限；移动端正式部署通常需要 HTTPS。',
+    nativePermissionHint: 'iOS 需要定位权限；如需后台持续更新，请在系统定位设置中允许“始终”。',
+    webPermissionHint: '浏览器需要位置权限；移动端正式部署通常需要 HTTPS。',
+    nativeLocationError: '无法启动 iOS 定位，请检查系统定位权限是否允许“始终”。',
+    webLocationError: '当前浏览器无法获取定位。',
+    invalidServerUrl: '服务器网址不正确，请填写 http:// 或 https:// 开头的网址。',
     errorPrefix: '出错了',
   },
   en: {
@@ -130,12 +139,17 @@ const i18n = {
     accuracy: 'Accuracy',
     updated: 'Updated',
     noLocation: 'No location yet',
-    permissionHint: 'Location permission is required; production mobile deployments usually need HTTPS.',
+    nativePermissionHint: 'iOS location permission is required. For background updates, allow Always in system location settings.',
+    webPermissionHint: 'Location permission is required; production mobile deployments usually need HTTPS.',
+    nativeLocationError: 'Unable to start iOS location updates. Check that location permission is set to Always.',
+    webLocationError: 'Location is not available in this browser.',
+    invalidServerUrl: 'Enter a valid server URL beginning with http:// or https://.',
     errorPrefix: 'Error',
   },
 } satisfies Record<Lang, Record<string, string>>;
 
 function App() {
+  const runtime = useMemo<RuntimeInfo>(() => ({ isNative: Capacitor.isNativePlatform(), platform: Capacitor.getPlatform() }), []);
   const [lang, setLang] = useState<Lang>(() => (localStorage.getItem(langKey) as Lang) || preferredLang());
   const [session, setSession] = useState<Session | null>(() => readSession());
   const [devices, setDevices] = useState<Device[]>([]);
@@ -172,7 +186,7 @@ function App() {
 
     async function startLocationSharing() {
       setStatus('locating');
-      stopLocationSharing = Capacitor.isNativePlatform()
+      stopLocationSharing = runtime.isNative
         ? await startNativeLocationSharing(activeSession, handleLocationShared, handleLocationError)
         : startBrowserLocationSharing(activeSession, handleLocationShared, handleLocationError);
     }
@@ -187,7 +201,7 @@ function App() {
     function handleLocationError(err: unknown) {
       if (cancelled) return;
       setStatus('idle');
-      showError(err);
+      showError(locationErrorMessage(err, runtime.isNative, t));
     }
 
     startLocationSharing().catch(handleLocationError);
@@ -198,7 +212,7 @@ function App() {
       window.clearInterval(timer);
       void stopLocationSharing?.();
     };
-  }, [session]);
+  }, [runtime.isNative, session, t]);
 
   async function refreshDevices(activeSession = session) {
     if (!activeSession) return;
@@ -333,7 +347,7 @@ function App() {
                 <Save size={16} />
               </button>
             </div>
-            <p className="hint">{t.permissionHint}</p>
+            <p className="hint">{runtime.isNative ? t.nativePermissionHint : t.webPermissionHint}</p>
           </section>
 
           <section className="device-list">
@@ -359,7 +373,8 @@ function Login({ lang, setLang, onLogin }: { lang: Lang; setLang: (lang: Lang) =
   const [serverUrl, setServerUrl] = useState(import.meta.env.VITE_DEFAULT_SERVER_URL || '');
   const [token, setToken] = useState('');
   const [acceptedAgreement, setAcceptedAgreement] = useState(false);
-  const deviceId = useMemo(() => crypto.randomUUID(), []);
+  const [error, setError] = useState('');
+  const deviceId = useMemo(() => randomDeviceId(), []);
   const canLogin = Boolean(serverUrl.trim() && token.trim() && acceptedAgreement);
 
   return (
@@ -380,8 +395,14 @@ function Login({ lang, setLang, onLogin }: { lang: Lang; setLang: (lang: Lang) =
         className="login-form"
         onSubmit={(event) => {
           event.preventDefault();
+          const normalizedServerUrl = normalizeServerUrl(serverUrl);
+          if (!normalizedServerUrl) {
+            setError(t.invalidServerUrl);
+            return;
+          }
+          setError('');
           onLogin({
-            serverUrl: normalizeServerUrl(serverUrl),
+            serverUrl: normalizedServerUrl,
             token: token.trim(),
             deviceId,
             deviceName: defaultDeviceName(),
@@ -396,6 +417,8 @@ function Login({ lang, setLang, onLogin }: { lang: Lang; setLang: (lang: Lang) =
           {t.token}
           <input value={token} onChange={(event) => setToken(event.target.value)} type="password" required />
         </label>
+
+        {error && <div className="error inline-error">{t.errorPrefix}: {error}</div>}
 
         <section className="agreement-panel">
           <h2>{t.privacyTitle}</h2>
@@ -669,6 +692,19 @@ function startBrowserLocationSharing(session: Session, onShared: () => Promise<v
     return null;
   }
 
+  navigator.geolocation.getCurrentPosition(
+    async (position) => {
+      try {
+        await sendLocation(session, browserLocationPayload(position));
+        await onShared();
+      } catch (err) {
+        onError(err);
+      }
+    },
+    onError,
+    { enableHighAccuracy: true, maximumAge: 15_000, timeout: 20_000 },
+  );
+
   const watchId = navigator.geolocation.watchPosition(
     async (position) => {
       try {
@@ -720,17 +756,6 @@ function mapLink(location: Location, name: string) {
   const { latitude: lat, longitude: lng } = mapCoordinate(location);
   const label = encodeURIComponent(name);
   return `https://uri.amap.com/marker?position=${lng},${lat}&name=${label}`;
-}
-
-function trackLink(locations: Location[], name: string) {
-  if (locations.length < 2) return '';
-  const label = encodeURIComponent(name);
-  const points = locations.slice(-50).map(mapCoordinate);
-  const last = points[points.length - 1];
-
-  const origin = `${points[0].longitude},${points[0].latitude}`;
-  const destination = `${last.longitude},${last.latitude}`;
-  return `https://uri.amap.com/navigation?from=${origin},start&to=${destination},${label}&mode=car`;
 }
 
 function mapCoordinate(location: Location) {
@@ -797,7 +822,19 @@ function writeSession(session: Session) {
 }
 
 function normalizeServerUrl(value: string) {
-  return value.trim().replace(/\/+$/, '');
+  const trimmed = value.trim();
+  if (!trimmed) return '';
+  const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  try {
+    const url = new URL(withProtocol);
+    if (!['http:', 'https:'].includes(url.protocol)) return '';
+    url.pathname = url.pathname.replace(/\/+$/, '');
+    url.search = '';
+    url.hash = '';
+    return url.toString().replace(/\/+$/, '');
+  } catch {
+    return '';
+  }
 }
 
 function preferredLang(): Lang {
@@ -806,6 +843,23 @@ function preferredLang(): Lang {
 
 function defaultDeviceName() {
   return navigator.platform || 'My device';
+}
+
+function randomDeviceId() {
+  if (crypto.randomUUID) return crypto.randomUUID();
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = [...bytes].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
+function locationErrorMessage(err: unknown, isNative: boolean, t: Record<string, string>) {
+  const fallback = isNative ? t.nativeLocationError : t.webLocationError;
+  if (!err) return fallback;
+  if (err instanceof GeolocationPositionError) return `${fallback} ${err.message}`;
+  if (err instanceof Error) return `${fallback} ${err.message}`;
+  return `${fallback} ${String(err)}`;
 }
 
 function formatTime(value: string, lang: Lang) {

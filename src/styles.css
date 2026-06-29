@@ -152,6 +152,10 @@ h1 {
   color: #8c1d18;
 }
 
+.inline-error {
+  margin: 0;
+}
+
 .workspace {
   flex: 1;
   min-height: 0;
