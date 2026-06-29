@@ -24,6 +24,8 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>NSLocationAlwaysUsageDescription</key>
 	<string>Guideng uses your location in the background to share this device position with your configured server.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
