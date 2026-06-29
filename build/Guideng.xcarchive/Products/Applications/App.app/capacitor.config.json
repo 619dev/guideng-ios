@@ -1,0 +1,11 @@
+{
+	"appId": "com.fm619tech.guideng",
+	"appName": "Guideng",
+	"webDir": "dist",
+	"ios": {
+		"contentInset": "automatic"
+	},
+	"packageClassList": [
+		"BackgroundGeolocation"
+	]
+}
