@@ -76,7 +76,17 @@ The project already configures the following keys in [Info.plist](./ios/App/App/
 - `NSLocationAlwaysAndWhenInUseUsageDescription`
 - `UIBackgroundModes` with `location`
 
-The app can report location only after the user grants location permission. Even with background location enabled, iOS may still manage background execution according to system policy, battery state, and user settings.
+The app can report location only after the user grants location permission. After sign-in, Guideng uses background location to continuously report this device position to the self-hosted server entered by the user for family location sharing. Even with background location enabled, iOS may still manage background execution according to system policy, battery state, and user settings.
+
+## App Store Review Notes
+
+If App Review asks about background location under Guideline 2.5.4, add this to the Notes field in App Review Information:
+
+```text
+Guideng is a family location sharing app. After the user signs in to their self-hosted Guideng server and grants Always location permission, the app continuously reports this device location to that configured server, including while the app is in the background. This is required so family members can see the device's latest location and recent track history without the user keeping the app open.
+```
+
+Also upload a physical-device screen recording that shows signing in, granting Always location permission, location sharing starting, the app moving to the background for a while, and the app or server view showing location updates continuing.
 
 ## Server Configuration
 

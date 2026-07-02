@@ -27,9 +27,9 @@
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>NSLocationAlwaysUsageDescription</key>
-	<string>Guideng uses your location in the background to share this device position with your configured server.</string>
+	<string>Guideng uses your location in the background to share this device position with your configured server for family location sharing.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>Guideng uses your location in the background to share this device position with your configured server.</string>
+	<string>Guideng uses your location in the background to share this device position with your configured server for family location sharing.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Guideng uses your location to share this device position with your configured server.</string>
 	<key>UILaunchStoryboardName</key>

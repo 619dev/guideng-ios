@@ -76,7 +76,17 @@ npm run ios
 - `NSLocationAlwaysAndWhenInUseUsageDescription`
 - `UIBackgroundModes` 的 `location` 后台模式
 
-应用只有在用户授予定位权限后才能上报位置。即使启用了后台定位，iOS 仍可能根据系统策略、电量状态和用户设置管理后台运行行为。
+应用只有在用户授予定位权限后才能上报位置。用户登录后，归灯会使用后台定位把本机位置持续上报到用户填写的自建服务器，用于家人位置共享。即使启用了后台定位，iOS 仍可能根据系统策略、电量状态和用户设置管理后台运行行为。
+
+## App Store 审核说明
+
+如果审核因为 Guideline 2.5.4 询问后台定位用途，请在 App Review Information 的 Notes 中说明：
+
+```text
+Guideng is a family location sharing app. After the user signs in to their self-hosted Guideng server and grants Always location permission, the app continuously reports this device location to that configured server, including while the app is in the background. This is required so family members can see the device's latest location and recent track history without the user keeping the app open.
+```
+
+同时需要上传一段真机录屏：登录 App、授予“始终”定位权限、开始共享位置、切到后台一段时间，再回到 App 或服务端页面展示位置仍在更新。
 
 ## 服务端配置
 

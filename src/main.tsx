@@ -82,7 +82,7 @@ const i18n = {
     loginConsent: '我已阅读并同意隐私规则和使用许可协议',
     privacyTitle: '隐私规则',
     privacyText:
-      '归灯会在你登录后请求浏览器定位权限，并把设备名称、设备标识、当前位置、精度、速度、方向、时间和最近 7 天轨迹发送到你填写的自建服务器。数据由你的服务器保存，应用不会把数据发送到其他归灯官方服务。FM619 TECHNOLOG 联系方式：4722522@gmail.com。',
+      '归灯会在你登录后请求定位权限，并把设备名称、设备标识、当前位置、精度、速度、方向、时间和最近 7 天轨迹发送到你填写的自建服务器。iOS 授予“始终”定位权限后，归灯可在后台持续共享本机位置，用于家人位置共享。数据由你的服务器保存，应用不会把数据发送到其他归灯官方服务。FM619 TECHNOLOG 联系方式：4722522@gmail.com。',
     licenseTitle: '使用许可协议',
     licenseText:
       '你应只在自己拥有权限的设备上使用归灯，并确保参与共享位置的家人知情同意。你需要自行保管服务器地址和 Token；任何持有 Token 的人都可能访问位置数据。归灯按现状提供，不承诺适用于紧急救援、医疗、执法或其他高风险场景。FM619 TECHNOLOG 联系方式：4722522@gmail.com。',
@@ -102,9 +102,9 @@ const i18n = {
     accuracy: '精度',
     updated: '更新',
     noLocation: '还没有位置',
-    nativePermissionHint: 'iOS 需要定位权限；如需后台持续更新，请在系统定位设置中允许“始终”。',
+    nativePermissionHint: 'iOS 需要定位权限；如需后台持续上报，请在系统定位设置中允许“始终”。',
     webPermissionHint: '浏览器需要位置权限；移动端正式部署通常需要 HTTPS。',
-    nativeLocationError: '无法启动 iOS 定位，请检查系统定位权限是否允许“始终”。',
+    nativeLocationError: '无法启动 iOS 后台定位，请检查系统定位权限是否允许“始终”。',
     webLocationError: '当前浏览器无法获取定位。',
     invalidServerUrl: '服务器网址不正确，请填写 http:// 或 https:// 开头的网址。',
     errorPrefix: '出错了',
@@ -119,7 +119,7 @@ const i18n = {
     loginConsent: 'I have read and agree to the privacy rules and license agreement',
     privacyTitle: 'Privacy Rules',
     privacyText:
-      'After login, Guideng requests browser location permission and sends device name, device ID, current location, accuracy, speed, heading, timestamps, and the latest 7 days of tracks to the self-hosted server you enter. The data is stored by your server. The app does not send data to any official Guideng service. FM619 TECHNOLOG Contact: 4722522@gmail.com.',
+      'After login, Guideng requests location permission and sends device name, device ID, current location, accuracy, speed, heading, timestamps, and the latest 7 days of tracks to the self-hosted server you enter. When Always location permission is granted on iOS, Guideng can continue sharing this device location in the background for family location sharing. The data is stored by your server. The app does not send data to any official Guideng service. FM619 TECHNOLOG Contact: 4722522@gmail.com.',
     licenseTitle: 'License Agreement',
     licenseText:
       'Use Guideng only on devices you are authorized to use, and make sure family members who share location are informed and have agreed. You are responsible for protecting the server URL and token; anyone with the token may access location data. Guideng is provided as is and is not intended for emergency rescue, medical, law enforcement, or other high-risk use. FM619 TECHNOLOG Contact: 4722522@gmail.com.',
@@ -139,9 +139,9 @@ const i18n = {
     accuracy: 'Accuracy',
     updated: 'Updated',
     noLocation: 'No location yet',
-    nativePermissionHint: 'iOS location permission is required. For background updates, allow Always in system location settings.',
+    nativePermissionHint: 'iOS location permission is required. For continuous background reporting, allow Always in system location settings.',
     webPermissionHint: 'Location permission is required; production mobile deployments usually need HTTPS.',
-    nativeLocationError: 'Unable to start iOS location updates. Check that location permission is set to Always.',
+    nativeLocationError: 'Unable to start iOS background location updates. Check that location permission is set to Always.',
     webLocationError: 'Location is not available in this browser.',
     invalidServerUrl: 'Enter a valid server URL beginning with http:// or https://.',
     errorPrefix: 'Error',
