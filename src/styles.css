@@ -652,3 +652,85 @@ dd {
     max-height: clamp(190px, 28svh, 280px);
   }
 }
+
+/* ── Location Permission Onboarding Prompt ── */
+
+.location-prompt-screen {
+  min-height: 100svh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding:
+    calc(var(--safe-top) + 24px)
+    calc(var(--page-pad-x) + var(--safe-right))
+    calc(var(--safe-bottom) + 24px)
+    calc(var(--page-pad-x) + var(--safe-left));
+  background: linear-gradient(160deg, #fffaf0 0%, #dfeadf 100%);
+}
+
+.location-prompt-card {
+  width: min(460px, 100%);
+  display: grid;
+  gap: 16px;
+  padding: 32px 28px;
+  border: 1px solid #d5e0d4;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow:
+    0 2px 8px rgb(23 32 28 / 6%),
+    0 20px 60px rgb(23 32 28 / 10%);
+  text-align: center;
+}
+
+.location-prompt-icon {
+  width: 72px;
+  height: 72px;
+  display: grid;
+  place-items: center;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #194d45 0%, #2d7a5f 100%);
+  color: #ffffff;
+  margin: 0 auto 4px;
+  box-shadow: 0 8px 24px rgb(25 77 69 / 30%);
+}
+
+.location-prompt-title {
+  font-size: clamp(20px, 5vw, 26px);
+  line-height: 1.2;
+  color: #17201c;
+}
+
+.location-prompt-body {
+  font-size: 15px;
+  line-height: 1.6;
+  color: #334039;
+  text-align: left;
+}
+
+.location-prompt-note {
+  font-size: 13px;
+  line-height: 1.55;
+  color: #6b786e;
+  text-align: left;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: #f5f9f4;
+  border: 1px solid #d0ddd0;
+}
+
+.location-prompt-btn {
+  width: 100%;
+  margin-top: 4px;
+  padding: 14px 20px;
+  font-size: 16px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #194d45 0%, #2d7a5f 100%);
+  box-shadow: 0 6px 18px rgb(25 77 69 / 28%);
+  transition: opacity 0.15s ease, box-shadow 0.15s ease;
+}
+
+.location-prompt-btn:not(:disabled):active {
+  opacity: 0.85;
+  box-shadow: 0 2px 8px rgb(25 77 69 / 20%);
+}
+
