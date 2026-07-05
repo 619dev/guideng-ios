@@ -58,6 +58,8 @@ type AppConfig = {
   amap_ios_key?: string | null;
 };
 
+type RawAppConfig = Partial<AppConfig> & Record<string, unknown>;
+
 type GuidengLocationPermissionPlugin = {
   requestWhenInUse(): Promise<{ status: 'authorizedAlways' | 'authorizedWhenInUse' }>;
   requestAlways(): Promise<{ status: 'authorizedAlways' | 'authorizedWhenInUse' }>;
@@ -177,7 +179,7 @@ function App() {
   const [session, setSession] = useState<Session | null>(() => readSession());
   const [showLocationPrompt, setShowLocationPrompt] = useState(false);
   const [devices, setDevices] = useState<Device[]>([]);
-  const [appConfig, setAppConfig] = useState<AppConfig | null>(null);
+  const [appConfig, setAppConfig] = useState<AppConfig | null | undefined>(undefined);
   const [selectedDeviceId, setSelectedDeviceId] = useState('');
   const [tracks, setTracks] = useState<Location[]>([]);
   const [editingName, setEditingName] = useState('');
@@ -195,7 +197,7 @@ function App() {
     registerDevice(session)
       .then(() => Promise.all([refreshDevices(session), refreshConfig(session)]))
       .catch(showError);
-  }, [session]);
+  }, [session, showLocationPrompt]);
 
   useEffect(() => {
     if (!session || !selectedDeviceId) return;
@@ -253,8 +255,13 @@ function App() {
 
   async function refreshConfig(activeSession = session) {
     if (!activeSession) return;
-    const nextConfig = await api<AppConfig>(activeSession, '/api/config');
-    setAppConfig(nextConfig);
+    try {
+      const nextConfig = await api<RawAppConfig>(activeSession, '/api/config');
+      setAppConfig(normalizeAppConfig(nextConfig));
+    } catch (err) {
+      setAppConfig(null);
+      throw err;
+    }
   }
 
   async function saveName() {
@@ -303,7 +310,7 @@ function App() {
     );
   }
 
-  const selected = devices.find((device) => device.id === selectedDeviceId) || newestLocatedDevice(devices);
+  const selected = selectedLocatedDevice(devices, selectedDeviceId) || newestLocatedDevice(devices) || devices.find((device) => device.id === selectedDeviceId);
 
   return (
     <main className="app-shell">
@@ -590,7 +597,7 @@ function AmapView({
   lang,
   onSelectDevice,
 }: {
-  config: AppConfig | null;
+  config: AppConfig | null | undefined;
   devices: Device[];
   selectedDeviceId: string;
   tracks: Location[];
@@ -661,6 +668,15 @@ function AmapView({
       if (map) map.destroy();
     };
   }, [key, securityCode, selectedDeviceId, locatedDevices, location?.latitude, location?.longitude, tracks, onSelectDevice]);
+
+  if (config === undefined) {
+    return (
+      <div className="empty-map">
+        <MapPinned size={44} />
+        <span>{t.mapLoading}</span>
+      </div>
+    );
+  }
 
   if (!key) {
     return (
@@ -789,6 +805,43 @@ async function api<T>(session: Session, path: string, init: RequestInit = {}): P
   return response.json();
 }
 
+function normalizeAppConfig(config: RawAppConfig): AppConfig {
+  return {
+    provider: 'amap',
+    amap_web_js_api_key: firstString(
+      config.amap_web_js_api_key,
+      config.amapWebJsApiKey,
+      config.web_js_api_key,
+      config.webJsApiKey,
+      config.web_api_key,
+      config.webApiKey,
+      config.amap_key,
+      config.amapKey,
+      import.meta.env.VITE_AMAP_WEB_JS_API_KEY,
+    ),
+    amap_web_js_security_code: firstString(
+      config.amap_web_js_security_code,
+      config.amapWebJsSecurityCode,
+      config.web_js_security_code,
+      config.webJsSecurityCode,
+      config.security_code,
+      config.securityCode,
+      import.meta.env.VITE_AMAP_WEB_JS_SECURITY_CODE,
+    ),
+    amap_android_key: firstString(config.amap_android_key, config.amapAndroidKey),
+    amap_ios_key: firstString(config.amap_ios_key, config.amapIosKey),
+  };
+}
+
+function firstString(...values: unknown[]) {
+  for (const value of values) {
+    if (typeof value !== 'string') continue;
+    const trimmed = value.trim();
+    if (trimmed) return trimmed;
+  }
+  return null;
+}
+
 async function registerDevice(session: Session) {
   return api<Device>(session, '/api/devices', {
     method: 'POST',
@@ -801,12 +854,22 @@ async function registerDevice(session: Session) {
 }
 
 async function startNativeLocationSharing(session: Session, onShared: () => Promise<void>, onError: (err: unknown) => void) {
+  const initialPosition = await getNativeInitialLocation();
+  if (initialPosition) {
+    try {
+      await sendLocation(session, nativeLocationPayload(initialPosition));
+      await onShared();
+    } catch (err) {
+      onError(err);
+    }
+  }
+
   const watcherId = await BackgroundGeolocation.addWatcher(
     {
       backgroundTitle: 'Guideng',
       backgroundMessage: 'Guideng is sharing this device location with your server.',
       requestPermissions: false,
-      stale: false,
+      stale: true,
       distanceFilter: 10,
     },
     async (position?: NativeLocation, error?: CallbackError) => {
@@ -825,6 +888,43 @@ async function startNativeLocationSharing(session: Session, onShared: () => Prom
   );
 
   return () => BackgroundGeolocation.removeWatcher({ id: watcherId });
+}
+
+async function getNativeInitialLocation() {
+  let watcherId = '';
+  let lastPosition: NativeLocation | undefined;
+  let settled = false;
+
+  await new Promise<void>(async (resolve) => {
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timeout);
+      resolve();
+    };
+    const timeout = window.setTimeout(finish, 3_000);
+    try {
+      watcherId = await BackgroundGeolocation.addWatcher(
+        {
+          requestPermissions: false,
+          stale: true,
+          distanceFilter: 0,
+        },
+        (position?: NativeLocation) => {
+          if (position) lastPosition = position;
+          finish();
+        },
+      );
+    } catch {
+      finish();
+    }
+  });
+
+  if (watcherId) {
+    await BackgroundGeolocation.removeWatcher({ id: watcherId }).catch(() => undefined);
+  }
+
+  return lastPosition;
 }
 
 function startBrowserLocationSharing(session: Session, onShared: () => Promise<void>, onError: (err: unknown) => void) {
@@ -946,6 +1046,10 @@ function transformLng(x: number, y: number) {
 
 function newestLocatedDevice(devices: Device[]) {
   return devices.find((device) => device.last_location) || null;
+}
+
+function selectedLocatedDevice(devices: Device[], selectedDeviceId: string) {
+  return devices.find((device) => device.id === selectedDeviceId && device.last_location) || null;
 }
 
 function readSession(): Session | null {
