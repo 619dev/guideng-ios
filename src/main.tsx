@@ -59,6 +59,7 @@ type AppConfig = {
 };
 
 type GuidengLocationPermissionPlugin = {
+  requestWhenInUse(): Promise<{ status: 'authorizedAlways' | 'authorizedWhenInUse' }>;
   requestAlways(): Promise<{ status: 'authorizedAlways' | 'authorizedWhenInUse' }>;
 };
 
@@ -119,6 +120,9 @@ const i18n = {
     locationPromptBody2: 'iOS 会分两步授权：请先在第一个系统弹窗中选择「使用 App 期间允许」，随后在第二个弹窗中选择「更改为始终允许」。',
     locationPromptBody3: '你可以随时前往「设置 → 隐私与安全性 → 定位服务 → 归灯」修改此设置。',
     locationPromptContinue: '继续并开启后台定位',
+    locationPromptAlwaysTitle: '还需要始终允许定位',
+    locationPromptAlwaysBody: '第一步已完成。请继续授权，并在下一个系统弹窗中选择「更改为始终允许」，这样归灯才能在后台持续共享位置。',
+    locationPromptAlwaysContinue: '继续申请始终允许',
   },
   en: {
     app: 'Guideng',
@@ -161,6 +165,9 @@ const i18n = {
     locationPromptBody2: 'iOS grants this in two steps: choose "Allow While Using App" first, then choose "Change to Always Allow" in the follow-up dialog.',
     locationPromptBody3: 'You can change this at any time in Settings → Privacy & Security → Location Services → Guideng.',
     locationPromptContinue: 'Continue & Enable Background Location',
+    locationPromptAlwaysTitle: 'Always Location Still Needed',
+    locationPromptAlwaysBody: 'Step one is complete. Continue and choose "Change to Always Allow" in the next system dialog so Guideng can keep sharing location in the background.',
+    locationPromptAlwaysContinue: 'Continue & Request Always',
   },
 } satisfies Record<Lang, Record<string, string>>;
 
@@ -196,7 +203,7 @@ function App() {
   }, [session, selectedDeviceId]);
 
   useEffect(() => {
-    if (!session) return;
+    if (!session || showLocationPrompt) return;
     const activeSession = session;
     let cancelled = false;
     let stopLocationSharing: (() => void | Promise<void>) | null = null;
@@ -476,17 +483,32 @@ function Login({ lang, setLang, onLogin }: { lang: Lang; setLang: (lang: Lang) =
 function LocationPrompt({ lang, onContinue }: { lang: Lang; onContinue: () => void }) {
   const t = i18n[lang];
   const [loading, setLoading] = useState(false);
+  const [step, setStep] = useState<'whenInUse' | 'always'>('whenInUse');
+  const [promptError, setPromptError] = useState('');
 
   async function handleContinue() {
     setLoading(true);
+    setPromptError('');
     try {
-      await requestNativeLocationPermissions();
-    } catch {
-      // Ignore errors — the main sharing loop will surface them once the prompt is dismissed.
+      if (step === 'whenInUse') {
+        await triggerNativeLocationPermissionPrompt({ background: false });
+        setStep('always');
+        return;
+      }
+      await triggerNativeLocationPermissionPrompt({ background: true });
+    } catch (err) {
+      setPromptError(err instanceof Error ? err.message : String(err));
+      return;
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
     onContinue();
   }
+
+  const title = step === 'whenInUse' ? t.locationPromptTitle : t.locationPromptAlwaysTitle;
+  const primaryBody = step === 'whenInUse' ? t.locationPromptBody1 : t.locationPromptAlwaysBody;
+  const secondaryBody = step === 'whenInUse' ? t.locationPromptBody2 : t.locationPromptBody3;
+  const buttonLabel = step === 'whenInUse' ? t.locationPromptContinue : t.locationPromptAlwaysContinue;
 
   return (
     <main className="location-prompt-screen">
@@ -494,10 +516,11 @@ function LocationPrompt({ lang, onContinue }: { lang: Lang; onContinue: () => vo
         <div className="location-prompt-icon">
           <LocateFixed size={36} />
         </div>
-        <h1 className="location-prompt-title">{t.locationPromptTitle}</h1>
-        <p className="location-prompt-body">{t.locationPromptBody1}</p>
-        <p className="location-prompt-body">{t.locationPromptBody2}</p>
-        <p className="location-prompt-note">{t.locationPromptBody3}</p>
+        <h1 className="location-prompt-title">{title}</h1>
+        <p className="location-prompt-body">{primaryBody}</p>
+        <p className="location-prompt-body">{secondaryBody}</p>
+        {step === 'whenInUse' && <p className="location-prompt-note">{t.locationPromptBody3}</p>}
+        {promptError && <div className="error inline-error">{t.errorPrefix}: {promptError}</div>}
         <button
           id="location-prompt-continue"
           className="primary-button location-prompt-btn"
@@ -505,15 +528,57 @@ function LocationPrompt({ lang, onContinue }: { lang: Lang; onContinue: () => vo
           disabled={loading}
         >
           <LocateFixed size={18} />
-          {t.locationPromptContinue}
+          {buttonLabel}
         </button>
       </div>
     </main>
   );
 }
 
-async function requestNativeLocationPermissions() {
-  await GuidengLocationPermission.requestAlways();
+async function triggerNativeLocationPermissionPrompt({ background }: { background: boolean }) {
+  let watcherId = '';
+  let settled = false;
+
+  await new Promise<void>(async (resolve, reject) => {
+    const timeout = window.setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      resolve();
+    }, 12_000);
+
+    try {
+      watcherId = await BackgroundGeolocation.addWatcher(
+        {
+          backgroundTitle: 'Guideng',
+          ...(background ? { backgroundMessage: 'Guideng is requesting background location permission.' } : {}),
+          requestPermissions: true,
+          stale: true,
+          distanceFilter: 10,
+        },
+        (_position?: NativeLocation, error?: CallbackError) => {
+          if (settled) return;
+          if (error) {
+            settled = true;
+            window.clearTimeout(timeout);
+            reject(error);
+            return;
+          }
+          settled = true;
+          window.clearTimeout(timeout);
+          resolve();
+        },
+      );
+    } catch (err) {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timeout);
+      reject(err);
+    }
+  });
+
+  if (watcherId) {
+    await BackgroundGeolocation.removeWatcher({ id: watcherId }).catch(() => undefined);
+  }
 }
 
 
@@ -740,7 +805,7 @@ async function startNativeLocationSharing(session: Session, onShared: () => Prom
     {
       backgroundTitle: 'Guideng',
       backgroundMessage: 'Guideng is sharing this device location with your server.',
-      requestPermissions: true,
+      requestPermissions: false,
       stale: false,
       distanceFilter: 10,
     },
