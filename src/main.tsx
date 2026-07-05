@@ -58,6 +58,10 @@ type AppConfig = {
   amap_ios_key?: string | null;
 };
 
+type GuidengLocationPermissionPlugin = {
+  requestAlways(): Promise<{ status: 'authorizedAlways' | 'authorizedWhenInUse' }>;
+};
+
 declare global {
   interface Window {
     AMap?: any;
@@ -71,6 +75,7 @@ const storageKey = 'guideng.session';
 const langKey = 'guideng.lang';
 const locationPromptKey = 'guideng.location_prompt_shown';
 const BackgroundGeolocation = registerPlugin<BackgroundGeolocationPlugin>('BackgroundGeolocation');
+const GuidengLocationPermission = registerPlugin<GuidengLocationPermissionPlugin>('GuidengLocationPermission');
 
 const i18n = {
   zh: {
@@ -111,7 +116,7 @@ const i18n = {
     errorPrefix: '出错了',
     locationPromptTitle: '需要后台定位权限',
     locationPromptBody1: '归灯的核心功能是在后台持续共享本机位置，让家人实时了解彼此所在。',
-    locationPromptBody2: '请在接下来的系统弹窗中选择「始终允许」定位权限。若只选择「使用 App 期间」，关闭 App 后位置将停止上报。',
+    locationPromptBody2: 'iOS 会分两步授权：请先在第一个系统弹窗中选择「使用 App 期间允许」，随后在第二个弹窗中选择「更改为始终允许」。',
     locationPromptBody3: '你可以随时前往「设置 → 隐私与安全性 → 定位服务 → 归灯」修改此设置。',
     locationPromptContinue: '继续并开启后台定位',
   },
@@ -153,7 +158,7 @@ const i18n = {
     errorPrefix: 'Error',
     locationPromptTitle: 'Background Location Required',
     locationPromptBody1: "Guideng's core feature is persistent background location sharing, so your family can see each other's real-time location at all times — even when the app is closed.",
-    locationPromptBody2: 'Please select "Always Allow" in the upcoming system dialog. If you choose "Allow While Using App", location reporting will stop when the app is closed.',
+    locationPromptBody2: 'iOS grants this in two steps: choose "Allow While Using App" first, then choose "Change to Always Allow" in the follow-up dialog.',
     locationPromptBody3: 'You can change this at any time in Settings → Privacy & Security → Location Services → Guideng.',
     locationPromptContinue: 'Continue & Enable Background Location',
   },
@@ -178,7 +183,7 @@ function App() {
   }, [lang]);
 
   useEffect(() => {
-    if (!session) return;
+    if (!session || showLocationPrompt) return;
     setEditingName(session.deviceName);
     registerDevice(session)
       .then(() => Promise.all([refreshDevices(session), refreshConfig(session)]))
@@ -224,7 +229,7 @@ function App() {
       window.clearInterval(timer);
       void stopLocationSharing?.();
     };
-  }, [runtime.isNative, session, t]);
+  }, [runtime.isNative, session, showLocationPrompt, t]);
 
   async function refreshDevices(activeSession = session) {
     if (!activeSession) return;
@@ -271,7 +276,7 @@ function App() {
         onLogin={(next) => {
           writeSession(next);
           setSession(next);
-          if (runtime.isNative && !localStorage.getItem(locationPromptKey)) {
+          if (runtime.isNative) {
             setShowLocationPrompt(true);
           }
         }}
@@ -475,19 +480,7 @@ function LocationPrompt({ lang, onContinue }: { lang: Lang; onContinue: () => vo
   async function handleContinue() {
     setLoading(true);
     try {
-      // Trigger the native permission dialog via a short-lived watcher,
-      // then immediately remove it so the main sharing loop takes over.
-      const watcherId = await BackgroundGeolocation.addWatcher(
-        {
-          backgroundTitle: 'Guideng',
-          backgroundMessage: 'Guideng is sharing this device location with your server.',
-          requestPermissions: true,
-          stale: true,
-          distanceFilter: 0,
-        },
-        () => {},
-      );
-      await BackgroundGeolocation.removeWatcher({ id: watcherId });
+      await requestNativeLocationPermissions();
     } catch {
       // Ignore errors — the main sharing loop will surface them once the prompt is dismissed.
     }
@@ -517,6 +510,10 @@ function LocationPrompt({ lang, onContinue }: { lang: Lang; onContinue: () => vo
       </div>
     </main>
   );
+}
+
+async function requestNativeLocationPermissions() {
+  await GuidengLocationPermission.requestAlways();
 }
 
 
