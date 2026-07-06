@@ -117,14 +117,14 @@ const i18n = {
     webLocationError: '当前浏览器无法获取定位。',
     invalidServerUrl: '服务器网址不正确，请填写 http:// 或 https:// 开头的网址。',
     errorPrefix: '出错了',
-    locationPromptTitle: '需要后台定位权限',
-    locationPromptBody1: '归灯的核心功能是在后台持续共享本机位置，让家人实时了解彼此所在。',
-    locationPromptBody2: 'iOS 会分两步授权：请先在第一个系统弹窗中选择「使用 App 期间允许」，随后在第二个弹窗中选择「更改为始终允许」。',
+    locationPromptTitle: '后台位置共享',
+    locationPromptBody1: '归灯使用定位来把本机位置共享到你配置的服务器，让家人了解彼此所在。',
+    locationPromptBody2: '后台持续共享需要 iOS 定位权限设置为“始终”。你可以在系统弹窗中选择权限级别。',
     locationPromptBody3: '你可以随时前往「设置 → 隐私与安全性 → 定位服务 → 归灯」修改此设置。',
-    locationPromptContinue: '继续并开启后台定位',
-    locationPromptAlwaysTitle: '还需要始终允许定位',
-    locationPromptAlwaysBody: '第一步已完成。请继续授权，并在下一个系统弹窗中选择「更改为始终允许」，这样归灯才能在后台持续共享位置。',
-    locationPromptAlwaysContinue: '继续申请始终允许',
+    locationPromptContinue: '继续',
+    locationPromptAlwaysTitle: '后台共享设置',
+    locationPromptAlwaysBody: '如果你希望归灯在后台继续共享本机位置，iOS 可能会再次显示定位权限弹窗。',
+    locationPromptAlwaysContinue: '下一步',
   },
   en: {
     app: 'Guideng',
@@ -162,14 +162,14 @@ const i18n = {
     webLocationError: 'Location is not available in this browser.',
     invalidServerUrl: 'Enter a valid server URL beginning with http:// or https://.',
     errorPrefix: 'Error',
-    locationPromptTitle: 'Background Location Required',
-    locationPromptBody1: "Guideng's core feature is persistent background location sharing, so your family can see each other's real-time location at all times — even when the app is closed.",
-    locationPromptBody2: 'iOS grants this in two steps: choose "Allow While Using App" first, then choose "Change to Always Allow" in the follow-up dialog.',
+    locationPromptTitle: 'Background Location Sharing',
+    locationPromptBody1: 'Guideng uses location to share this device position with your configured server so family members can see each other.',
+    locationPromptBody2: 'Continuous background sharing requires iOS location access to be set to Always. You can choose the permission level in the system dialogs.',
     locationPromptBody3: 'You can change this at any time in Settings → Privacy & Security → Location Services → Guideng.',
-    locationPromptContinue: 'Continue & Enable Background Location',
-    locationPromptAlwaysTitle: 'Always Location Still Needed',
-    locationPromptAlwaysBody: 'Step one is complete. Continue and choose "Change to Always Allow" in the next system dialog so Guideng can keep sharing location in the background.',
-    locationPromptAlwaysContinue: 'Continue & Request Always',
+    locationPromptContinue: 'Continue',
+    locationPromptAlwaysTitle: 'Background Sharing Setup',
+    locationPromptAlwaysBody: 'If you want Guideng to keep sharing this device location in the background, iOS may show another location permission dialog.',
+    locationPromptAlwaysContinue: 'Next',
   },
 } satisfies Record<Lang, Record<string, string>>;
 
@@ -534,7 +534,6 @@ function LocationPrompt({ lang, onContinue }: { lang: Lang; onContinue: () => vo
           onClick={handleContinue}
           disabled={loading}
         >
-          <LocateFixed size={18} />
           {buttonLabel}
         </button>
       </div>
