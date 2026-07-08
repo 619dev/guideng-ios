@@ -494,21 +494,49 @@ dd {
   line-height: 1.55;
 }
 
-.agreement-check {
-  display: grid;
-  grid-template-columns: 20px minmax(0, 1fr);
-  align-items: start;
+.login-form > .agreement-check {
+  align-self: start;
+  display: flex;
+  align-items: flex-start;
   gap: 10px;
   color: #334039;
   font-size: 14px;
   line-height: 1.45;
 }
 
-.agreement-check input {
+.login-form > .agreement-check input {
+  flex: 0 0 auto;
   width: 18px;
   height: 18px;
-  margin: 1px 0 0;
+  min-height: 0;
+  margin: 2px 0 0;
+  padding: 0;
+  appearance: none;
+  display: grid;
+  place-content: center;
+  border: 1.5px solid #738078;
+  border-radius: 4px;
+  background: #ffffff;
   accent-color: #194d45;
+}
+
+.login-form > .agreement-check input:checked {
+  border-color: #194d45;
+  background: #194d45;
+}
+
+.login-form > .agreement-check input:checked::before {
+  width: 5px;
+  height: 9px;
+  margin-bottom: 1px;
+  border: solid #ffffff;
+  border-width: 0 2px 2px 0;
+  content: "";
+  transform: rotate(45deg);
+}
+
+.login-form > .agreement-check span {
+  min-width: 0;
 }
 
 .primary-button {
@@ -733,4 +761,3 @@ dd {
   opacity: 0.85;
   box-shadow: 0 2px 8px rgb(25 77 69 / 20%);
 }
-
