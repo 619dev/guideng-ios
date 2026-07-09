@@ -869,7 +869,7 @@ async function startNativeLocationSharing(session: Session, onShared: () => Prom
       backgroundMessage: 'Guideng is sharing this device location with your server.',
       requestPermissions: false,
       stale: true,
-      distanceFilter: 10,
+      distanceFilter: 0,
     },
     async (position?: NativeLocation, error?: CallbackError) => {
       if (error) {
