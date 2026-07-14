@@ -7,7 +7,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Override point for customization after application launch.
+        // Restore native tracking before the WebView is ready. Core Location may relaunch
+        // the app for a significant location change after iOS reclaimed the process.
+        GuidengLocationService.shared.restoreIfConfigured()
         return true
     }
 
