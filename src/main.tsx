@@ -337,7 +337,9 @@ function App() {
             title={t.logout}
             onClick={() => {
               localStorage.removeItem(storageKey);
-              if (runtime.isNative) void GuidengBackgroundLocation.stop();
+              if (runtime.isNative && Capacitor.isPluginAvailable('GuidengBackgroundLocation')) {
+                void GuidengBackgroundLocation.stop();
+              }
               setSession(null);
             }}
           >
@@ -862,11 +864,15 @@ async function registerDevice(session: Session) {
 async function startNativeLocationSharing(session: Session, onShared: () => Promise<void>, onError: (err: unknown) => void) {
   // The native service persists configuration and owns an independent upload queue,
   // so tracking survives WebView suspension and supported Core Location relaunches.
-  await GuidengBackgroundLocation.configure({
-    serverUrl: session.serverUrl,
-    token: session.token,
-    deviceId: session.deviceId,
-  });
+  // Older native shells do not contain this service. Keep the community watcher
+  // working until the user installs a build that includes the native plugin.
+  if (Capacitor.isPluginAvailable('GuidengBackgroundLocation')) {
+    await GuidengBackgroundLocation.configure({
+      serverUrl: session.serverUrl,
+      token: session.token,
+      deviceId: session.deviceId,
+    });
+  }
   const initialPosition = await getNativeInitialLocation();
   if (initialPosition) {
     try {
